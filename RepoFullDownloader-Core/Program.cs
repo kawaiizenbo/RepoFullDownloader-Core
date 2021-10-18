@@ -5,9 +5,7 @@ using RepoFullDownloader;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading;
@@ -115,7 +113,7 @@ namespace RepoFullDownloader_Core
                     webClient.DownloadFile(new Uri(link + "Packages.gz"), "Packages.gz");
                     FileStream packagesGz = new FileInfo("Packages.gz").OpenRead();
                     FileStream packagesGzDecompressed = File.Create("Packages");
-                    BZip2.Decompress(packagesGz, packagesGzDecompressed, true);
+                    GZip.Decompress(packagesGz, packagesGzDecompressed, true);
                 }
                 catch (Exception _e)
                 {
