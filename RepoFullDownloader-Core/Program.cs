@@ -26,7 +26,7 @@ namespace RepoFullDownloader_Core
             if(args.Length != 0)
             {
                 string url = args[0];
-                if(!args[0].StartsWith("https://") || !args[0].StartsWith("http://"))
+                if(!args[0].StartsWith("https://") && !args[0].StartsWith("http://"))
                 {
                     url = "http://" + url;
                 }
@@ -57,7 +57,7 @@ namespace RepoFullDownloader_Core
                     repo1.url = "http://cydia.invoxiplaygames.uk/";
                     repo1.isInstaller = false;
                     Repo repo2 = new Repo();
-                    repo2.url = "http://apptapp.saurik.com";
+                    repo2.url = "http://apptapp.saurik.com/";
                     repo2.isInstaller = true;
                     exampleOptions.repos = new[] { repo1, repo2 };
                     string exampleOut = JsonSerializer.Serialize(exampleOptions);
@@ -88,7 +88,16 @@ namespace RepoFullDownloader_Core
 
         static void DownloadRepo(string link, bool keepOg)
         {
-            
+            if (!link.StartsWith("https://") && !link.StartsWith("http://"))
+            {
+                link = "http://" + link;
+            }
+            if (!link.EndsWith("/"))
+            {
+                link += "/";
+            }
+            string cleanLink = link.Replace("http://", "").Replace("/", "_");
+            Directory.CreateDirectory($"./output/{cleanLink}");
             WebClient webClient = new WebClient();
             // headers because some repos are 'interesting'
             webClient.Headers.Add("X-Machine", "iPod4,1");
@@ -99,9 +108,9 @@ namespace RepoFullDownloader_Core
             try
             {
                 Console.WriteLine("Attempting to download " + link + "Packages.bz2");
-                webClient.DownloadFile(new Uri(link + "Packages.bz2"), "Packages.bz2");
-                FileStream packagesBz2 = new FileInfo("Packages.bz2").OpenRead();
-                FileStream packagesBz2Decompressed = File.Create("Packages");
+                webClient.DownloadFile(new Uri(link + "Packages.bz2"), $"./output/{cleanLink}/Packages.bz2");
+                FileStream packagesBz2 = new FileInfo($"./output/{cleanLink}/Packages.bz2").OpenRead();
+                FileStream packagesBz2Decompressed = File.Create($"./output/{cleanLink}/Packages");
                 BZip2.Decompress(packagesBz2, packagesBz2Decompressed, true);
             }
             catch (Exception e)
@@ -110,9 +119,9 @@ namespace RepoFullDownloader_Core
                 {
                     Console.WriteLine("Could not download " + link + "Packages.bz2: " + e.Message);
                     Console.WriteLine("Attempting to download " + link + "Packages.gz");
-                    webClient.DownloadFile(new Uri(link + "Packages.gz"), "Packages.gz");
-                    FileStream packagesGz = new FileInfo("Packages.gz").OpenRead();
-                    FileStream packagesGzDecompressed = File.Create("Packages");
+                    webClient.DownloadFile(new Uri(link + "Packages.gz"), $"./output/{cleanLink}/Packages.gz");
+                    FileStream packagesGz = new FileInfo($"./output/{cleanLink}/Packages.gz").OpenRead();
+                    FileStream packagesGzDecompressed = File.Create($"./output/{cleanLink}/Packages");
                     GZip.Decompress(packagesGz, packagesGzDecompressed, true);
                 }
                 catch (Exception _e)
@@ -121,7 +130,7 @@ namespace RepoFullDownloader_Core
                     {
                         Console.WriteLine("Could not download " + link + "Packages.gz: " + _e.Message);
                         Console.WriteLine("Attempting to download " + link + "Packages");
-                        webClient.DownloadFile(new Uri(link + "Packages"), "Packages");
+                        webClient.DownloadFile(new Uri(link + "Packages"), $"./output/{cleanLink}/Packages");
                     }
                     catch (Exception __e)
                     {
@@ -135,7 +144,7 @@ namespace RepoFullDownloader_Core
             Thread.Sleep(500);
             // Clean list of package links, names, and versions
             List<CydiaPackage> packages = new List<CydiaPackage>();
-            foreach (string s in File.ReadAllText("Packages").Split("\n\n"))
+            foreach (string s in File.ReadAllText($"./output/{cleanLink}/Packages").Split("\n\n"))
             {
                 string name = "";
                 string version = "";
@@ -157,6 +166,7 @@ namespace RepoFullDownloader_Core
                 }
                 packages.Add(new CydiaPackage(_link, name, version));
             }
+            // remove last one because ????
             packages.RemoveAt(packages.Count - 1);
             foreach(CydiaPackage p in packages)
             {
@@ -167,7 +177,7 @@ namespace RepoFullDownloader_Core
                     try
                     {
                         string[] choppedUp = p.link.Split('/');
-                        string fileToDownload = keepOg ? "./output/" + choppedUp[choppedUp.Length - 1] : "./output/" + p.name + "-" + p.version + ".deb";
+                        string fileToDownload = keepOg ? $"./output/{cleanLink}/" + choppedUp[choppedUp.Length - 1] : $"./output/{cleanLink}/" + p.name + "-" + p.version + ".deb";
                         if (File.Exists(fileToDownload))
                         {
                             fileToDownload += "_" + r.Next(0000, 9999);
@@ -190,18 +200,27 @@ namespace RepoFullDownloader_Core
 
         static void DownloadInstallerRepo(string link)
         {
+            if (!link.StartsWith("https://") && !link.StartsWith("http://"))
+            {
+                link = "http://" + link;
+            }
+            if (!link.EndsWith("/"))
+            {
+                link += "/";
+            }
+            string cleanLink = link.Replace("http://", "").Replace("/", "_");
             WebClient webClient = new WebClient();
             try
             {
                 Console.WriteLine("Attempting to download installer repo " + link);
-                webClient.DownloadFile(new Uri(link), "packages.xml");
+                webClient.DownloadFile(new Uri(link), $"./output/{cleanLink}/packages.xml");
             }
             catch (Exception e)
             {
                 Console.WriteLine("Could not download package list from " + link + ": " + e.Message);
                 return;
             }
-            List<string> plist = new List<string>(File.ReadAllLines("packages.xml"));
+            List<string> plist = new List<string>(File.ReadAllLines($"./output/{cleanLink}/packages.xml"));
             List<string> packages = new List<string>();
             int i = 1;
             foreach (string s in plist)
@@ -218,7 +237,7 @@ namespace RepoFullDownloader_Core
                 try
                 {
                     string[] choppedUp = s.Split('/');
-                    string fileToDownload = "./output/" + choppedUp[choppedUp.Length - 1];
+                    string fileToDownload = $"./output/{cleanLink}/" + choppedUp[choppedUp.Length - 1];
                     if (File.Exists(fileToDownload))
                     {
                         fileToDownload += "_" + r.Next(0000, 9999);
