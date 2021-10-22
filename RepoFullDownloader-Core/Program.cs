@@ -96,7 +96,7 @@ namespace RepoFullDownloader_Core
             {
                 link += "/";
             }
-            string cleanLink = link.Replace("http://", "").Replace("/", "_");
+            string cleanLink = link.TrimEnd('/').Replace("http://", "").Replace("https://", "").Replace("/", "_").Replace(":", "_");
             Directory.CreateDirectory($"./output/{cleanLink}");
             WebClient webClient = new WebClient();
             // headers because some repos are 'interesting'
@@ -168,34 +168,31 @@ namespace RepoFullDownloader_Core
             }
             // remove last one because ????
             packages.RemoveAt(packages.Count - 1);
+            List<string> failed = new List<string>();
             foreach(CydiaPackage p in packages)
             {
                 // Download all packages on repo
+                Random r = new Random();
                 try
                 {
-                    Random r = new Random();
-                    try
+                    string[] choppedUp = p.link.Split('/');
+                    string fileToDownload = keepOg ? $"./output/{cleanLink}/" + choppedUp[choppedUp.Length - 1] : $"./output/{cleanLink}/" + p.name + "-" + p.version + ".deb";
+                    if (File.Exists(fileToDownload))
                     {
-                        string[] choppedUp = p.link.Split('/');
-                        string fileToDownload = keepOg ? $"./output/{cleanLink}/" + choppedUp[choppedUp.Length - 1] : $"./output/{cleanLink}/" + p.name + "-" + p.version + ".deb";
-                        if (File.Exists(fileToDownload))
-                        {
-                            fileToDownload += "_" + r.Next(0000, 9999);
-                        }
-                        webClient.DownloadFile(new Uri(link + p.link), fileToDownload);
-                        Console.WriteLine("Successfully downloaded " + link + p.link + " as " + fileToDownload);
+                        fileToDownload += "_" + r.Next(0000, 9999);
                     }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Could not download " + link + p.link);
-                        Console.WriteLine(e.Message);
-                    }
+                    webClient.DownloadFile(new Uri(link + p.link), fileToDownload);
+                    Console.WriteLine("Successfully downloaded " + link + p.link + " as " + fileToDownload);
                 }
-                catch (ArgumentOutOfRangeException)
+                catch (Exception e)
                 {
-                    Console.WriteLine("Finished downloading " + link);
+                    Console.WriteLine("Could not download " + link + p.link);
+                    Console.WriteLine(e.Message);
+                    failed.Add(link + p.link);
                 }
             }
+            Console.WriteLine("Finished downloading " + link);
+            if(failed.Count != 0) File.WriteAllLines($"./output/{cleanLink}/failed.txt", failed);
         }
 
         static void DownloadInstallerRepo(string link)
