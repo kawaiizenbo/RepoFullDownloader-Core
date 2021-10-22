@@ -1,0 +1,13 @@
+{
+    "originalFilenames": false,
+    "repos": [
+        {
+            "url": "http://cydia.invoxiplaygames.uk/",
+            "isInstaller": false
+        },
+        {
+            "url": "http://apptapp.saurik.com",
+            "isInstaller": true
+        }
+    ]
+}

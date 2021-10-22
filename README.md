@@ -1,5 +1,5 @@
 # RepoFullDownloader-Core
-Cross-Platform Cydia/Installer 4 repo downloader
+Cross-Platform Cydia/Installer repo downloader
 
 ## Requirements
 .NET Core 3.1 or later  
