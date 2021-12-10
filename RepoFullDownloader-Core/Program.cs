@@ -25,7 +25,10 @@ namespace RepoFullDownloader_Core
             {
                 Directory.CreateDirectory("./output/");
             }
-            if(args.Length != 0)
+            // Load Options from 'options.json'
+            string optionsJson = File.ReadAllText("./options.json");
+            options = JsonSerializer.Deserialize<Options>(optionsJson);
+            if (args.Length != 0)
             {
                 string url = args[0];
                 if(!args[0].StartsWith("https://") && !args[0].StartsWith("http://"))
@@ -38,7 +41,7 @@ namespace RepoFullDownloader_Core
                 }
                 try
                 {
-                    DownloadRepo(url, false);
+                    DownloadRepo(url, options.originalFilenames);
                 }
                 catch(Exception)
                 {
@@ -56,10 +59,6 @@ namespace RepoFullDownloader_Core
                     File.WriteAllText("./options.json", JsonSerializer.Serialize(new Options()));
                     return;
                 }
-
-                // Load Options from 'options.json'
-                string optionsJson = File.ReadAllText("./options.json");
-                options = JsonSerializer.Deserialize<Options>(optionsJson);
 
                 foreach (Repo r in options.repos)
                 {
