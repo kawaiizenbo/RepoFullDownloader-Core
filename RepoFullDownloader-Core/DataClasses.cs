@@ -8,8 +8,9 @@ namespace RepoFullDownloader
 {
     class Options
     {
-        public bool originalFilenames { get; set; }
-        public Repo[] repos { get; set; }
+        public bool originalFilenames { get; set; } = false;
+        public Repo[] repos { get; set; } = { new Repo() { url = "http://cydia.invoxiplaygames.uk/" , isInstaller = false}, new Repo() { url = "http://apptapp.saurik.com/", isInstaller = true } };
+        public int delay { get; set; } = 1;
     }
 
     class Repo
