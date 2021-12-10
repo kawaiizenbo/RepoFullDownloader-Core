@@ -14,6 +14,8 @@ namespace RepoFullDownloader_Core
 {
     class Program
     {
+        private static Options options = new Options();
+
         static void Main(string[] args)
         {
             Console.WriteLine("RepoFullDownloader by KawaiiZenbo");
@@ -51,23 +53,13 @@ namespace RepoFullDownloader_Core
                     Console.WriteLine("Could not find options.json");
                     Console.WriteLine("Generating example...");
                     // generate example options
-                    Options exampleOptions = new Options();
-                    exampleOptions.originalFilenames = false;
-                    Repo repo1 = new Repo();
-                    repo1.url = "http://cydia.invoxiplaygames.uk/";
-                    repo1.isInstaller = false;
-                    Repo repo2 = new Repo();
-                    repo2.url = "http://apptapp.saurik.com/";
-                    repo2.isInstaller = true;
-                    exampleOptions.repos = new[] { repo1, repo2 };
-                    string exampleOut = JsonSerializer.Serialize(exampleOptions);
-                    File.WriteAllText("./options.json", exampleOut);
+                    File.WriteAllText("./options.json", JsonSerializer.Serialize(new Options()));
                     return;
                 }
 
                 // Load Options from 'options.json'
                 string optionsJson = File.ReadAllText("./options.json");
-                Options options = JsonSerializer.Deserialize<Options>(optionsJson);
+                options = JsonSerializer.Deserialize<Options>(optionsJson);
 
                 foreach (Repo r in options.repos)
                 {
@@ -190,6 +182,7 @@ namespace RepoFullDownloader_Core
                     Console.WriteLine(e.Message);
                     failed.Add(link + p.link);
                 }
+                Thread.Sleep(options.delay);
             }
             Console.WriteLine("Finished downloading " + link);
             if(failed.Count != 0) File.WriteAllLines($"./output/{cleanLink}/failed.txt", failed);
