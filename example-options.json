@@ -1,13 +1,25 @@
 {
-    "originalFilenames": false,
-    "repos": [
+    "originalFilenames":false,
+    "repos":[
         {
-            "url": "http://cydia.invoxiplaygames.uk/",
-            "isInstaller": false
+            "url":"http://repo.kawaiizenbo.me/",
+            "type":"cydia",
+            "distAttributes":null
         },
         {
-            "url": "http://apptapp.saurik.com",
-            "isInstaller": true
+            "url":"http://apptapp.saurik.com/",
+            "type":"installer",
+            "distAttributes":null
+        },
+        {
+            "url":"http://apt.saurik.com/",
+            "type":"dist",
+            "distAttributes":
+            {
+                "suites":"ios/",
+                "components":"main"
+            }
         }
-    ]
+    ],
+    "delay":1
 }
