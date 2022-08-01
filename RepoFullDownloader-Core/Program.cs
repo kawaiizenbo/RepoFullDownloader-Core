@@ -196,7 +196,7 @@ namespace RepoFullDownloader_Core
                     }
                     using (WebClient wc = new WebClient())
                     {
-                        wc.DownloadFileAsync(new Uri(link + p.link), fileToDownload);
+                        wc.DownloadFile(new Uri(link + p.link), fileToDownload);
                     }
                     Console.WriteLine("Successfully downloaded " + link + p.link + " as " + fileToDownload);
                 }
