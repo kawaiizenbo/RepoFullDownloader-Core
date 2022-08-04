@@ -3,21 +3,21 @@ using ICSharpCode.SharpZipLib.GZip;
 
 using PlistCS;
 
-using RepoFullDownloader;
-
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace RepoFullDownloader_Core
 {
     class Program
     {
-        private static Options options = new Options();
+        private static List<string> repos = new List<string>();
+        private static bool originalFilenames;
+        private static int delayMS;
 
         static void Main(string[] args)
         {
@@ -33,17 +33,19 @@ namespace RepoFullDownloader_Core
             {
                 Directory.CreateDirectory("./output/");
             }
-            // Load Options from 'options.json'
-            if (!File.Exists("./options.json"))
+            // Load Options from 'options.ini'
+            if (!File.Exists("./options.ini"))
             {
-                Console.WriteLine("Could not find options.json");
+                Console.WriteLine("Could not find options.ini");
                 Console.WriteLine("Generating example...");
                 // generate example options
-                File.WriteAllText("./options.json", JsonSerializer.Serialize(new Options()));
-                return;
+                File.WriteAllText("options.ini", 
+                    "delayMS=1\n" +
+                    "originalFilenames=false");
             }
-            string optionsJson = File.ReadAllText("./options.json");
-            options = JsonSerializer.Deserialize<Options>(optionsJson);
+            string[] options = File.ReadAllLines("options.ini");
+            delayMS = int.Parse(options[0].Split('=')[1]);
+            originalFilenames = bool.Parse(options[1].Split('=')[1]);
             if (args.Length != 0)
             {
                 string url = args[0];
@@ -67,30 +69,47 @@ namespace RepoFullDownloader_Core
             }
             else
             {
-
-                foreach (Repo r in options.repos)
+                if (File.Exists("repos.txt"))
                 {
-                    if (r.type.ToLower() == "installer")
+                    foreach (string r in File.ReadAllLines("repos.txt"))
                     {
-                        DownloadInstallerRepo(r.url);
-                    }
-                    else if (r.type.ToLower() == "cydia")
-                    {
-                        DownloadRepo(r.url);
-                    }
-                    else if (r.type.ToLower() == "dist")
-                    {
-                        if(r.distAttributes == null)
+                        if (r.StartsWith('#')) continue;
+                        string[] repoWAttributes = r.Split(' '); 
+                        try
                         {
-                            Console.WriteLine($"No dist attributes were defined for {r.url} :(");
-                            return;
+                            switch (repoWAttributes[1])
+                            {
+                                case "installer":
+                                    DownloadInstallerRepo(repoWAttributes[0]);
+                                    break;
+                                case "cydia":
+                                    DownloadRepo(repoWAttributes[0]);
+                                    break;
+                                case "dist":
+                                    DownloadDistRepo(repoWAttributes[0], repoWAttributes[2], repoWAttributes[3]);
+                                    break;
+                                default:
+                                    Console.WriteLine($"Invalid repo type {repoWAttributes[1]} on {repoWAttributes[0]}");
+                                    break;
+                            }
                         }
-                        DownloadDistRepo(r.url, r.distAttributes);
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Invalid formatting on {r}");
+                            Console.WriteLine(e);
+                        }
                     }
-                    else
-                    {
-                        Console.WriteLine($"Invalid repo type {r.type} on {r.url}");
-                    }
+                }
+                else
+                {
+                    Console.WriteLine("Could not find repos.txt");
+                    Console.WriteLine("Generating example...");
+                    // generate example repo list
+                    File.WriteAllText("repos.txt",
+                        "http://repo.kawaiizenbo.me cydia\n" +
+                        "http://apptapp.saurik.com installer\n" +
+                        "http://apt.saurik.com dist ios/ main"
+                    );
                 }
             }
 
@@ -189,7 +208,7 @@ namespace RepoFullDownloader_Core
                 try
                 {
                     string[] choppedUp = p.link.Split('/');
-                    string fileToDownload = options.originalFilenames ? $"./output/{cleanLink}/" + choppedUp[choppedUp.Length - 1].Replace("/", "_").Replace(":", "_") : $"./output/{cleanLink}/" + p.name.Replace("/", "_").Replace(":", "_") + "-" + p.version.Replace("/", "_").Replace(":", "_") + ".deb";
+                    string fileToDownload = originalFilenames ? $"./output/{cleanLink}/" + choppedUp[choppedUp.Length - 1].Replace("/", "_").Replace(":", "_") : $"./output/{cleanLink}/" + p.name.Replace("/", "_").Replace(":", "_") + "-" + p.version.Replace("/", "_").Replace(":", "_") + ".deb";
                     if (File.Exists(fileToDownload))
                     {
                         fileToDownload += "_" + r.Next(0000, 9999);
@@ -206,7 +225,7 @@ namespace RepoFullDownloader_Core
                     Console.WriteLine(e.Message);
                     failed.Add(link + p.link);
                 }
-                Thread.Sleep(options.delay);
+                Thread.Sleep(delayMS);
             }
             Console.WriteLine("Finished downloading " + link);
             if(failed.Count != 0) File.WriteAllLines($"./output/{cleanLink}/failed.txt", failed);
@@ -236,7 +255,8 @@ namespace RepoFullDownloader_Core
                 Console.WriteLine("Could not download package list from " + link + ": " + e.Message);
                 return;
             }
-            Dictionary<string, object> plist = (Dictionary<string, object>)Plist.readPlist($"./output/{cleanLink}/packages.plist");
+            Dictionary<string, object> plist = (Dictionary<string, object>)Plist.readPlistSource(Regex.Replace(File.ReadAllText($"./output/{cleanLink}/packages.plist"), 
+                "<!--([^|]+)-->", ""));
             foreach (Dictionary<string, object> d in (List<object>)plist["packages"])
             {
                 Random r = new Random();
@@ -281,7 +301,7 @@ namespace RepoFullDownloader_Core
             }
         }
 
-        static void DownloadDistRepo(string link, DistAttributes da)
+        static void DownloadDistRepo(string link, string suites, string components)
         {
             // clean up link so no issues can ever arise
             if (!link.StartsWith("https://") && !link.StartsWith("http://"))
@@ -295,15 +315,15 @@ namespace RepoFullDownloader_Core
 
             // make that good dist path
             string distPath;
-            if(!da.suites.EndsWith("/"))
+            if(!suites.EndsWith("/"))
             {
-                da.suites += "/";
+                suites += "/";
             }
-            if (!da.components.EndsWith("/"))
+            if (!components.EndsWith("/"))
             {
-                da.components += "/";
+                components += "/";
             }
-            distPath = da.suites + da.components;
+            distPath = suites + components;
             string poolpfLink = link + "dists/" + distPath + "binary-iphoneos-arm/";
 
             string cleanLink = link.TrimEnd('/').Replace("http://", "").Replace("https://", "").Replace("/", "_").Replace(":", "_");
@@ -387,7 +407,7 @@ namespace RepoFullDownloader_Core
                 try
                 {
                     string[] choppedUp = p.link.Split('/');
-                    string fileToDownload = options.originalFilenames ? $"./output/{cleanLink}-({distPath.Replace("/", "_").Replace(":", "_")})/" + choppedUp[choppedUp.Length - 1].Replace("/", "_").Replace(":", "_") : $"./output/{cleanLink}-({distPath.Replace("/", "_").Replace(":", "_")})/" + p.name.Replace("/", "_").Replace(":", "_") + "-" + p.version.Replace("/", "_").Replace(":", "_") + ".deb";
+                    string fileToDownload = originalFilenames ? $"./output/{cleanLink}-({distPath.Replace("/", "_").Replace(":", "_")})/" + choppedUp[choppedUp.Length - 1].Replace("/", "_").Replace(":", "_") : $"./output/{cleanLink}-({distPath.Replace("/", "_").Replace(":", "_")})/" + p.name.Replace("/", "_").Replace(":", "_") + "-" + p.version.Replace("/", "_").Replace(":", "_") + ".deb";
                     if (File.Exists(fileToDownload))
                     {
                         fileToDownload += "_" + r.Next(0000, 9999);
@@ -404,10 +424,23 @@ namespace RepoFullDownloader_Core
                     Console.WriteLine(e.Message);
                     failed.Add(link + p.link);
                 }
-                Thread.Sleep(options.delay);
+                Thread.Sleep(delayMS);
             }
             Console.WriteLine("Finished downloading " + link);
             if (failed.Count != 0) File.WriteAllLines($"./output/{cleanLink}-({distPath.Replace("/", "_").Replace(":", "_")})/failed.txt", failed);
         }
+    }
+
+    class CydiaPackage
+    {
+        public CydiaPackage(string _link, string _name, string _version)
+        {
+            this.link = _link;
+            this.name = _name;
+            this.version = _version;
+        }
+        public string link { get; set; }
+        public string name { get; set; }
+        public string version { get; set; }
     }
 }
