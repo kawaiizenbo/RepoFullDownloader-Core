@@ -10,4 +10,4 @@ An internet connection.
 Running with no URL will use the repo list from `repos.txt`
 
 ## Binaries
-https://nightly.link/kawaiizenbo/RepoFullDownloader-Core/workflows/build/master/Build.zip
+https://nightly.link/kawaiizenbo/RepoFullDownloader-Core/workflows/dotnet/master/Build.zip

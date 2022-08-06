@@ -149,7 +149,7 @@ namespace RepoFullDownloader_Core
                 {
                     Console.WriteLine("Could not download " + link + "Packages.bz2: " + e.Message);
                     Console.WriteLine("Attempting to download " + link + "Packages.gz");
-                    Stream packagesGz = webClient.GetStreamAsync(link + "Packages.bz2").Result;
+                    Stream packagesGz = webClient.GetStreamAsync(link + "Packages.gz").Result;
                     FileStream packagesGzDecompressed = File.Create($"./output/{cleanLink}/Packages");
                     GZip.Decompress(packagesGz, packagesGzDecompressed, true);
                 }
