@@ -1,4 +1,5 @@
 # RepoFullDownloader-Core
+## we moved https://git.kawaiizenbo.me/kawaiizenbo/RepoFullDownloader
 Cross-Platform Cydia/Installer repo downloader
 
 ## Requirements
